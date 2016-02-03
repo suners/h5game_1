@@ -1,40 +1,124 @@
-var canvas = document.getElementById("game");
-
-var ctx = canvas.getContext && canvas.getContext("2d");
-
-if(!ctx) {
-	alert('please upgrade your browser');
-} else {
-	startGame();
+var sprites = {
+	ship: { sx: 0, sy: 0, w: 38, h: 35, frames: 3}
+};
+var startGame = function() {
+	// SpriteSheet.draw(Game.ctx, "ship", 100, 100, 1);
+	Game.setBoard(0,new Starfield(20,0.4,100,true)); 
+	Game.setBoard(1,new Starfield(50,0.6,100));
+    Game.setBoard(2,new Starfield(100,1.0,50));
+    Game.setBoard(3,new TitleScreen("Alien Invasion","Press space to start playing", playGame));
 }
+window.addEventListener("load", function() {
+	Game.initialize("game", sprites, startGame);
+});
 
-var SpriteSheet = new function() {
-	this.map = {};
-	this.load = function(spriteData, callback) {
-		this.map = spriteData;
-		this.image = new Image();
-		this.image.onload = callback;
-		this.image.src = 'img/sprites.png';
-	};
-	this.draw = function(ctx, sprite, x, y, frame) {
-		var s = this.map[sprite];
-		if(!iframe) frame = 0;
+var Starfield = function(speed, opacity, numStars, clear) {
+	
+	// Set up the offscreen canvas
+	var stars = document.createElement("canvas");
+	stars.width = Game.width;
+	stars.height = Game.height;
+
+	var starCtx = stars.getContext("2d");
+	var offset = 0;
+
+	// If the clear option is set, make the background black instead of transparent
+	if(clear) {
+		starCtx.fillStype = "#000";
+		starCtx.fillRect(0, 0, stars.width, stars.height);
+	}
+
+	// Now draw a bunch of random 2 pixel
+	// rectangles onto the offscreen canvas
+	starCtx.fillStype = "#FFF";
+	starCtx.globalAlpha = opacity;
+	for(var i = 0; i < numStars; i++) {
+		starCtx.fillRect(
+			Math.floor(Math.random() * stars.width),
+			Math.floor(Math.random() * stars.height),
+			2,
+			2
+		);
+	}
+
+	// This method is called every frame to draw the starfield onto the canvas
+	this.draw = function(ctx) {
+		var intOffset = Math.floor(offset);
+		var remaining = stars.height - intOffset;
+		// Draw the top half of the starfield
+		if(intOffset > 0) {
+			ctx.drawImage(
+				stars,
+				0,
+				remaining,
+				stars.width,
+				intOffset,
+				0,
+				0,
+				stars.width,
+				intOffset
+			);
+		}
+
+		// Draw the bottom half of the starfield
+		if(remaining > 0) {
+			ctx.drawImage(
+				stars,
+				0,
+				0,
+				stars.width,
+				remaining,
+				0,
+				intOffset,
+				stars.width,
+				remaining
+			);
+		}
+	}
+
+	// This method is called to update the starfield
+	this.step = function(dt) {
+		offset += dt * speed;
+		offset = offset % stars.height;
 	}
 }
 
-function startGame() {
-	ctx.fillStyle = "#FFFF00";
-  	ctx.fillRect(50,100,380,400);
 
-  	// Second, semi-transparent blue rectangle
-  	ctx.fillStyle = "rgba(0,0,128,0.8);";
-  	ctx.fillRect(25,50,380,400);
-
-  	var img = new Image();
-  	img.onload = function() {
-  		ctx.drawImage(img, 18, 0, 18, 25, 100, 100, 18, 25);
-  	}
-  	img.src = 'img/sprites.png';
+var playGame = function() {
+	Game.setBoard(3, new PlayerShip());
 }
+
+
+var PlayerShip = function() {
+	this.w = SpriteSheet.map['ship'].w;
+	this.h = SpriteSheet.map['ship'].h;
+	this.x = Game.width/2 - this.w/2;
+	this.y = Game.height - 10 - this.h;
+	this.vx = 0;
+	this.step = function(dt) {
+		if(Game.keys['left']) {
+			this.vx = -this.maxVel;
+		} else if(Game.keys['right']) {
+			this.vx = this.maxVel
+		} else {
+			this.vx = 0;
+		}
+
+		this.x += this.vx * dt;
+
+		if(this.x < 0) {
+			this.x = 0;
+		} else if(this.x > Game.width - this.w) {
+			this.x = Game.width - this.w;
+		}
+	}
+
+	this.draw = function(ctx) {
+		SpriteSheet.draw(ctx, 'ship', this.x, this.y, 1);
+	}
+}
+
+
+
 
 
